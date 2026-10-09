@@ -80,7 +80,7 @@ Development of this project was sponsored and carried out by [WWB AG](https://ww
 
 ## Licenses
 
-- Code build and preprocess scripts: TDB
+- Code build and preprocess scripts: Creative Commons Attribution 4.0 International
 - Assets:
   - Logo: CMA proprietary 
   - Font: OFL (`OFL.txt`)
