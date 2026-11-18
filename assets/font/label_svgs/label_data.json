@@ -1,0 +1,42 @@
+{
+  "duty/insert_title": {
+    "text": "DUTY DIVISION",
+    "adv": 1047.29,
+    "h": 102.86
+  },
+  "duty/insert_dims": {
+    "text": "Length: 210 Height: 145 Width: 40",
+    "adv": 2354.29,
+    "h": 135.86
+  },
+  "duty/floor_title": {
+    "text": "DUTY OPTIC DIVISION",
+    "adv": 1506.14,
+    "h": 102.86
+  },
+  "duty/floor_dims": {
+    "text": "Length: 210 Height: 145/175 Width: 40",
+    "adv": 2667.14,
+    "h": 143.71
+  },
+  "sport/insert_title": {
+    "text": "SPORT DIVISION",
+    "adv": 1133.57,
+    "h": 102.86
+  },
+  "sport/insert_dims": {
+    "text": "Length: 225 Height: 155 Width: 45",
+    "adv": 2361.14,
+    "h": 135.86
+  },
+  "sport/floor_title": {
+    "text": "SPORT OPTIC DIVISION",
+    "adv": 1592.43,
+    "h": 102.86
+  },
+  "sport/floor_dims": {
+    "text": "Length: 225 Height: 155/185 Width: 45",
+    "adv": 2689.43,
+    "h": 143.71
+  }
+}

@@ -19,8 +19,10 @@ Edge rules (d = normal . view_dir; states front/back/edge-on):
 Usage:
   uv run --with numpy --with matplotlib python3 assets/render/make_lineart.py
 """
+import json
 import os
 import struct
+import sys
 
 import numpy as np
 import matplotlib
@@ -45,20 +47,80 @@ TOL = 0.15          # mm: edge sample depth vs visible surface tolerance
 # kept -> single-stroke outlines, like a font. A 3.6 mm engraving doubled
 # rim+floor strokes into an unreadable scribble otherwise. The logo panel
 # is NOT in a region (its inverted relief is drawn whole, reads fine).
-# Rectangles from the .scad: label_svg centers (body/2, cy +- lh/2) and
-# advance*size/100 widths (see assets/font/label_svgs header comments).
-ENGRAVE = {
-    "box": [
-        # pocket-floor label: rim plane z = wall = 3.2, floor 2.4
-        (3.6, 101.6, 87.0, 95.6, 3.2),     # floor_title (cap 6.5)
-        (4.6, 100.6, 80.8, 87.4, 3.2),     # floor_dims   (cap 3.6)
-    ],
-    "insert": [
-        # top-face label: rim plane z = body_d = 40, floor 39.2
-        (10.5, 94.3, 14.6, 23.0, 40.0),    # insert_title (cap 8)
-        (5.3, 99.5, 7.6, 14.0, 40.0),      # insert_dims  (cap 4)
-    ],
+# Rectangles are DERIVED from the set's nominal dims + label_data.json
+# (the same numbers the .scad label placement uses), grown by PAD.
+# Keyed "box"/"insert" for the set being rendered (set per iteration).
+SVG_MM = 0.352778          # OpenSCAD SVG import scale, mm per unit
+CAP_IMPORT_MM = 35.2778    # cap height (100 units) at 1:1 import, mm
+PAD = 1.0                  # mm grown around each label's ink box
+
+LABEL_DATA = json.load(open(os.path.join(
+    ROOT, "assets", "font", "label_svgs", "label_data.json")))
+
+# The divisions (nominal box params - keep matched with the .scad entry
+# files); outputs = line-art basenames for the box / assembled set.
+SETS = {
+    "duty": dict(
+        box_stl="duty_division.stl", insert_stl="duty_division_insert.stl",
+        inner_l=210, inner_h=145, inner_w=40, opt_h=30, fit=0.4, wall=3.2,
+        floor_title="duty/floor_title", floor_dims="duty/floor_dims",
+        floor_label_size=3.6, floor_title_size=6.5,
+        insert_title="duty/insert_title", insert_dims="duty/insert_dims",
+        label_size=4.0, label_title_size=8.0, label_lh=2.0,
+        outputs=("box_iso", "set_assembled"),
+    ),
+    "sport": dict(
+        box_stl="sport_division.stl", insert_stl="sport_division_insert.stl",
+        inner_l=225, inner_h=155, inner_w=45, opt_h=30, fit=0.4, wall=3.2,
+        floor_title="sport/floor_title", floor_dims="sport/floor_dims",
+        floor_label_size=3.6, floor_title_size=6.5,
+        insert_title="sport/insert_title", insert_dims="sport/insert_dims",
+        label_size=4.0, label_title_size=8.0, label_lh=2.0,
+        outputs=("box_iso_sport", "set_assembled_sport"),
+    ),
 }
+
+ENGRAVE = {}
+
+
+def line_rect(cx, cy, label, size, rim_z):
+    """Rect around one engraved text line: ink box (from label_data.json)
+    grown by PAD, plus the rim-plane z the drop rule tests against.
+    Order matches the drop rule's unpacking: (lo_x, hi_x, lo_y, hi_y, z)."""
+    d = LABEL_DATA[label]
+    w = d["adv"] * SVG_MM * (size / CAP_IMPORT_MM)
+    h = d["h"] * SVG_MM * (size / CAP_IMPORT_MM)
+    return (cx - w / 2 - PAD, cx + w / 2 + PAD,
+            cy - h / 2 - PAD, cy + h / 2 + PAD, rim_z)
+
+
+def engrave_for(s):
+    """Per-set engraving regions in each part's own xy frame."""
+    il = s["inner_l"] + s["fit"]
+    ih = s["inner_h"] + s["fit"]
+    pocket_l = il / 2
+    cy = ih / 2 + s["opt_h"] / 2                       # pocket center y
+    lh = s["floor_label_size"] * s["label_lh"]
+    body_l = il / 2 - s["fit"]
+    body_h = s["opt_h"] - s["fit"]
+    body_d = s["inner_w"]
+    ilh = s["label_size"] * s["label_lh"]
+    return {
+        # pocket-floor label (rim plane = floor top z = wall)
+        "box": [
+            line_rect(pocket_l / 2, cy + lh / 2, s["floor_title"],
+                      s["floor_title_size"], s["wall"]),
+            line_rect(pocket_l / 2, cy - lh / 2, s["floor_dims"],
+                      s["floor_label_size"], s["wall"]),
+        ],
+        # insert top-face label (rim plane = top face z = body_d)
+        "insert": [
+            line_rect(body_l / 2, body_h / 2 + ilh / 2, s["insert_title"],
+                      s["label_title_size"], body_d),
+            line_rect(body_l / 2, body_h / 2 - ilh / 2, s["insert_dims"],
+                      s["label_size"], body_d),
+        ],
+    }
 
 
 def in_region(x0, y0, x1, y1, reg):
@@ -260,11 +322,20 @@ def draw(parts, view_name, name, lw=0.6):
 
 
 if __name__ == "__main__":
-    box = load_binary_stl(os.path.join(BUILD, "duty_division.stl"), tag="box")
-    ins = load_binary_stl(os.path.join(BUILD, "duty_division_insert.stl"),
-                          offset=(0.2, 72.9, 3.2), tag="insert")  # seated
+    wanted = sys.argv[1:] or list(SETS)  # e.g.: make_lineart.py sport
+    for set_name in wanted:
+        s = SETS[set_name]
+        ENGRAVE = engrave_for(s)  # regions in this set's parts' frames
+        box = load_binary_stl(os.path.join(BUILD, s["box_stl"]), tag="box")
+        # insert seated in the pocket: drop-in clearance split half per side
+        ins = load_binary_stl(
+            os.path.join(BUILD, s["insert_stl"]),
+            offset=(s["fit"] / 2,
+                    (s["inner_h"] + s["fit"]) / 2 + s["fit"] / 2,
+                    s["wall"]),
+            tag="insert")  # seated
 
-    # the two hero images (README): empty box showing the L-cavity + floor
-    # label, and the assembled gauge with the insert seated
-    draw([box], "iso", "box_iso", lw=0.5)
-    draw([box, ins], "iso", "set_assembled", lw=0.5)
+        # the two hero images (README): empty box showing the L-cavity +
+        # floor label, and the assembled gauge with the insert seated
+        draw([box], "iso", s["outputs"][0], lw=0.5)
+        draw([box, ins], "iso", s["outputs"][1], lw=0.5)

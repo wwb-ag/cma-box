@@ -17,7 +17,7 @@ fi
 # OpenSCAD refuses to write into a nonexistent output dir (exit 1); fresh
 # clones have no git-ignored build/.
 mkdir -p build
-for v in duty_division duty_division_insert; do
+for v in duty_division duty_division_insert sport_division sport_division_insert; do
     "${OPENSCAD[@]}" -o "build/$v.stl" \
         -D '$fs=0.05' -D '$fa=0.05' \
         "openscad/$v.scad"
