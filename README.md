@@ -7,12 +7,6 @@ A simple **3d-printable** box for assessing whether the **CMA** participant's eq
 - This repository contains the openscad files, the assets and build scripts.
 - You can download the print-ready `.stl` files from the [CMA website](https://www.cma-sport.com/resources).
 
-![The Duty set assembled: insert seated](assets/render/preview/set_assembled.png)
-
-![The Sport set: L-shaped cavity, engraved labels, CMA logo panel](assets/render/preview/box_iso_sport.png)
-
-![The Sport set assembled: insert seated](assets/render/preview/set_assembled_sport.png)
-
 ## Dimensions
 
 Inner dimensions of the box (nominal values, as printed on the labels).
